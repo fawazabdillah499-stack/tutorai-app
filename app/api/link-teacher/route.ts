@@ -1,28 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { supabase } from '@/lib/supabase'
 
 export async function POST(req: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies })
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { teacherId, studentId, classCode } = await req.json()
+  if (!teacherId || !studentId) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
-  const { teacherCode } = await req.json()
-
-  // Find teacher with this code
-  const { data: teacher } = await supabase
-    .from('profiles')
-    .select('id, full_name')
-    .eq('parent_code', teacherCode.toUpperCase())
-    .eq('role', 'teacher')
-    .single()
-
-  if (!teacher) return NextResponse.json({ error: 'Kode guru tidak valid' }, { status: 404 })
-
-  await supabase.from('teacher_student').upsert({
-    teacher_id: teacher.id,
-    student_id: user.id
-  })
-
-  return NextResponse.json({ success: true, teacherName: teacher.full_name })
+  await supabase.from('class_memberships').upsert({ teacher_id: teacherId, student_id: studentId, class_code: classCode })
+  return NextResponse.json({ success: true })
 }
