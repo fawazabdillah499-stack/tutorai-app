@@ -22,34 +22,29 @@ CARA MENGAJAR:
 - Gunakan emoji secukupnya biar tidak kaku
 - Kalau soal matematika, tunjukkan cara pengerjaan step by step
 - Maksimal 3-4 paragraf per jawaban
-- Di akhir jawaban, selalu tanya "Sudah ngerti atau ada yang mau ditanyain lagi? 😊"`
+- Di akhir jawaban, selalu tanya apakah sudah ngerti atau ada yang mau ditanyain lagi`
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: message }]
-      })
-    })
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: message }] }]
+        })
+      }
+    )
 
     const data = await response.json()
-    const reply = data.content?.[0]?.text || 'Maaf, ada gangguan. Coba lagi ya!'
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Maaf, ada gangguan. Coba lagi ya!'
 
-    // Save to database if session exists
     if (sessionId && studentId) {
       await supabase.from('chat_messages').insert([
         { session_id: sessionId, role: 'user', content: message },
         { session_id: sessionId, role: 'assistant', content: reply }
       ])
-      // Update session message count
       await supabase.rpc('increment_message_count', { session_id: sessionId })
     }
 
