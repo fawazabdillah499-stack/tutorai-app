@@ -41,7 +41,7 @@ export default function ParentDashboard() {
   const linkChild = async () => {
     if (!linkCode.trim()) return
     setLinking(true)
-    const { data: user } = await supabase.auth.getUser()
+const { data: { user } } = await supabase.auth.getUser()
     // Find student by code (first 8 chars of UUID uppercase)
     const { data: students } = await supabase.from('profiles').select('*').eq('role','student')
     const student = students?.find((s:any) => s.id.slice(0,8).toUpperCase() === linkCode.trim().toUpperCase())
