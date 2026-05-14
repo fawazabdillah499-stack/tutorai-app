@@ -1,31 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { supabase } from '@/lib/supabase'
 
 export async function POST(req: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies })
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { parentId, studentCode } = await req.json()
+  if (!parentId || !studentCode) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
-  const { parentCode } = await req.json()
+  const { data: students } = await supabase.from('profiles').select('id, full_name').eq('role', 'student')
+  const student = students?.find((s: any) => s.id.slice(0,8).toUpperCase() === studentCode.toUpperCase())
 
-  // Find student with this parent_code
-  const { data: student, error } = await supabase
-    .from('profiles')
-    .select('id, full_name')
-    .eq('parent_code', parentCode.toUpperCase())
-    .eq('role', 'student')
-    .single()
+  if (!student) return NextResponse.json({ error: 'Kode tidak ditemukan' }, { status: 404 })
 
-  if (error || !student) {
-    return NextResponse.json({ error: 'Kode tidak ditemukan' }, { status: 404 })
-  }
-
-  // Link parent to student
-  await supabase.from('parent_child').upsert({
-    parent_id: user.id,
-    student_id: student.id
-  })
-
+  await supabase.from('parent_links').upsert({ parent_id: parentId, student_id: student.id })
   return NextResponse.json({ success: true, studentName: student.full_name })
 }
