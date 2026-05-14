@@ -1,10 +1,8 @@
 import { supabase } from './supabase'
-import type { UserRole } from './supabase'
 
-export async function signUp(email: string, password: string, fullName: string, role: UserRole, kelas?: string, school?: string) {
+export async function signUp(email: string, password: string, fullName: string, role: string, kelas?: string) {
   const { data, error } = await supabase.auth.signUp({ email, password })
   if (error) throw error
-
   if (data.user) {
     const { error: profileError } = await supabase.from('profiles').insert({
       id: data.user.id,
@@ -12,7 +10,6 @@ export async function signUp(email: string, password: string, fullName: string, 
       full_name: fullName,
       role,
       kelas,
-      school,
     })
     if (profileError) throw profileError
   }
@@ -33,17 +30,15 @@ export async function signOut() {
 export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
-
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
-
   return profile
 }
 
-export async function getRedirectPath(role: UserRole) {
+export async function getRedirectPath(role: string) {
   switch (role) {
     case 'admin': return '/admin'
     case 'teacher': return '/teacher'
