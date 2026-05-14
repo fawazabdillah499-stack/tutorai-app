@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: NextRequest) {
-  const { parentId, studentCode } = await req.json()
-  if (!parentId || !studentCode) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  try {
+    const { parentId, studentCode } = await req.json()
+    if (!parentId || !studentCode) {
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    }
 
-  const { data: students } = await supabase.from('profiles').select('id, full_name').eq('role', 'student')
-  const student = students?.find((s: any) => s.id.slice(0,8).toUpperCase() === studentCode.toUpperCase())
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-  if (!student) return NextResponse.json({ error: 'Kode tidak ditemukan' }, { status: 404 })
+    const { data: students } = await supabase.from('profiles').select('id, full_name').eq('role', 'student')
+    const student = students?.find((s: any) => s.id.slice(0,8).toUpperCase() === studentCode.toUpperCase())
 
-  await supabase.from('parent_links').upsert({ parent_id: parentId, student_id: student.id })
-  return NextResponse.json({ success: true, studentName: student.full_name })
+    if (!student) {
+      return NextResponse.json({ error: 'Kode tidak ditemukan' }, { status: 404 })
+    }
+
+    await supabase.from('parent_links').upsert({ parent_id: parentId, student_id: student.id })
+    return NextResponse.json({ success: true, studentName: student.full_name })
+  } catch (err) {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  }
 }
